@@ -2,10 +2,12 @@
 Synapse — Main FastAPI Application
 """
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 
 from .api.routes_train import router as train_router
 from .api.routes_network import router as network_router
@@ -41,10 +43,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+allowed_origin = os.getenv("ALLOWED_ORIGIN", "*")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[allowed_origin],
+    # Credentialed requests cannot use a wildcard origin in browsers.
+    allow_credentials=allowed_origin != "*",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -56,17 +61,7 @@ app.include_router(replay_router, prefix="/api")
 app.include_router(corridor_router, prefix="/api")
 
 
-@app.get("/health")
+@app.get("/health", response_class=PlainTextResponse, include_in_schema=False)
 def health_check():
-    from .dependencies import (
-        train_state_engine, network_state_engine,
-        station_lookup, train_lookup, route_lookup,
-    )
-    return {
-        "status": "ok",
-        "stations_loaded": len(station_lookup),
-        "trains_loaded": len(train_lookup),
-        "routes_loaded": len(route_lookup),
-        "network_sections": network_state_engine.total_sections,
-        "active_trains": train_state_engine.active_train_count,
-    }
+    """Lightweight liveness probe for hosting platforms."""
+    return "OK"
