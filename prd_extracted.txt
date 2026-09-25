@@ -1,0 +1,91 @@
+﻿Table of Contents
+
+Synapse ΓÇö Product Requirements Document
+Dynamic ETA Forecasting for Coaching Trains (SIH26028)
+Status: Draft v1 ┬╖ Owner: Team Synapse ┬╖ Source: Master Feature-Innovation Brief
+
+1. Vision & Problem Statement
+Existing systems (NTES, RTIS, ixigo/RailYatri Smart ETA) answer one question ΓÇö when will this train arrive? ΓÇö at ~90ΓÇô95% station-level accuracy using GPS + schedule + ML.
+Synapse keeps that baseline and adds what none of them expose: why the number is what it is, how confident the system is, and what could change it ΓÇö surfaced differently to each stakeholder (passenger, station staff, control room, crew, feeder operator), each getting only what they need to act.
+One-line identity: Synapse doesnΓÇÖt just predict arrival ΓÇö it explains the journeyΓÇÖs uncertainty and tells each stakeholder what to do about it.
+
+2. Goals & Success Metrics
+
+3. Users & Personas
+
+4. Scope
+In scope: ETA forecasting + uncertainty, delay attribution, network/section risk intelligence, station/crew/feeder decision support, degraded-mode handling, feedback/retraining loop, APIs for all four consumer surfaces.
+Out of scope: see ┬º11 Kill List ΓÇö no autonomous control actions, no generic chatbot, no unexplained confidence %, no crew-roster automation, no LC-gate core dependency.
+
+5. Functional Requirements (SIH Requirement Matrix)
+Rows marked ΓÇ£where availableΓÇ¥ (R4, R10, R12, R13) are explicitly conditional ΓÇö Synapse must degrade gracefully rather than assume their presence (see ┬º9 fallback column).
+
+6. System Architecture ΓÇö Baseline Components
+Train State Engine ΓÇö position, speed, last-known-good timestamp per train.
+Network State Engine ΓÇö section occupancy, headways, shared upcoming infrastructure.
+Historical Behaviour Engine ΓÇö per train-number/section/season/day-of-week delay distributions.
+Sectional Travel-Time Engine ΓÇö realistic running time by train class + conditions vs.┬átimetable.
+Station Dwell Engine ΓÇö predicted stop duration.
+Delay/Recovery Engine ΓÇö accumulated delay vs.┬áremaining timetable slack.
+Operational-Event Engine ΓÇö converts discrete events (TSR, block, unscheduled halt) to time penalties.
+Weather/External-Condition Engine ΓÇö weather ΓåÆ historical speed/dwell impact.
+Congestion Engine ΓÇö how busy remaining sections are.
+ETA Forecasting Engine ΓÇö combines 1ΓÇô9 into point + interval estimate per station.
+Dynamic Update Engine ΓÇö event-triggered recompute, not fixed-timer polling.
+Uncertainty Engine ΓÇö defensible interval, not a cosmetic ┬▒X.
+Multi-Train Orchestration ΓÇö makes 1ΓÇô12 viable at thousands-of-trains scale (shared feature caches, incremental compute).
+API Layer ΓÇö serves passenger apps, station displays, control-room dashboards.
+Passenger / Station / Control-Room Interfaces ΓÇö the three mandated surfaces.
+Feedback & Retraining System ΓÇö actual arrival ΓåÆ Historical Behaviour Engine.
+This baseline alone, executed cleanly, is already a credible submission. ┬º8 is what differentiates it.
+
+7. Feature Specifications
+7.1 Top Differentiators (lead with these in demo/pitch)
+7.2 Full Feature Set (P0 innovation layer, #1ΓÇô15)
+7.3 Second-Order Innovations (P3 ΓÇö combine multiple D-features; validate before committing engineering time)
+7.4 Explicitly Rejected ΓÇö Not to build (Kill List)
+Automatic control actions (auto-adjusting signals/schedules) ΓÇö crosses into autonomous control, out of scope for a passenger-information system.
+Generic LLM chatbot ΓÇ£ask about your trainΓÇ¥ ΓÇö adds no new capability over structured UI.
+A single opaque ΓÇ£confidence %ΓÇ¥ ΓÇö no confidence figure without a stated, defensible methodology.
+Crew scheduling automation ΓÇö duty rosters arenΓÇÖt publicly available; do not fabricate.
+Level-crossing-gate-based prediction as a core feature ΓÇö data essentially unavailable outside CRIS-internal systems; optional enhancement only, clearly labelled.
+ΓÇ£Nobody has ever built thisΓÇ¥ marketing claims ΓÇö always frame as ΓÇ£not found in what we checked,ΓÇ¥ never a novelty claim.
+
+8. UX ΓÇö Progressive Disclosure
+Level 1: ΓÇ£Arriving in 18 minΓÇ¥
+Level 2: ΓÇ£Expected delay: +7 minΓÇ¥
+Level 3: ΓÇ£Congestion ahead may add ~4 minΓÇ¥ (Delay Attribution Trace, plain language)
+Level 4: ΓÇ£Headway compression on Section XΓÇ¥ (staff/control room only)
+Level 5: ΓÇ£What if the preceding train clears 5 min earlier?ΓÇ¥ (control room only ΓÇö never forced on passengers)
+
+9. Data Architecture
+
+10. ML / Statistical Architecture
+ETA point forecast: gradient-boosted regression or lightweight sequence model per section-hop ΓÇö simplest model that hits the accuracy target wins; not forced-ML.
+Uncertainty: quantile regression or historical-residual-based intervals per section/time-band ΓÇö a methodology, not a flat percentage.
+Network interaction: graph-based model, used only for interaction/propagation layer, not the base point forecast.
+Attribution: feature-contribution decomposition from the same model already producing the forecast ΓÇö not a bolted-on second model.
+Deliberately not ML: fallback/degraded mode (rule-based), conflict forecaster (deterministic rules), sync-window sizing (deterministic from uncertainty band).
+
+11. API Layer (condensed)
+All read endpoints are cached and served from the shared feature layer ΓÇö no per-request recomputation. Recomputation is event-triggered (new GPS ping, new event notice), not fixed-interval polling, so cost scales with real state change, not train-count ├ù time.
+
+12. Non-Functional Requirements
+Scale: thousands of trains concurrently ΓÇö shared feature cache, incremental per-section computation (R16).
+Reliability: every interface surfaces stale-data flags; no silent degradation anywhere (R13/D13).
+Continuous learning: feedback loop closes actual-vs-predicted back into the Historical Behaviour Engine (R17).
+Configurability: per-zone/division config layer for operational diversity (R15).
+
+13. Evaluation Framework
+
+14. Roadmap
+Hackathon note: for any P1ΓÇôP3 feature needing live multi-train feeds you donΓÇÖt have, build replay-mode on recorded/simulated historical runs and say so plainly in the demo ΓÇö an honest ΓÇ£replay-based demonstrationΓÇ¥ is more credible to judges than implying live data that isnΓÇÖt there.
+
+15. Risks, Assumptions & Open Questions
+Prior art: point-ETA-via-ML is already deployed at scale in India (ixigo/RailYatri, NTES/RTIS) ΓÇö do not pitch the baseline forecasting engine itself as novel; differentiation is in the explanation/uncertainty/network layer.
+Graph-based delay-propagation modelling is an active published research area (Dutch/Chinese rail networks) ΓÇö SynapseΓÇÖs application to the Indian network with real-time control-room decision support has no known deployed equivalent, but this should be validated, not overclaimed.
+Calibrated, methodology-grounded uncertainty was not found exposed in any publicly searched Indian passenger-facing system ΓÇö treat as ΓÇ£not found in what we checked,ΓÇ¥ not a novelty claim.
+Second-order features (┬º7.3) require further validation before committing engineering time or presenting them as fully original to judges.
+R21 (crew scheduling) is data-blocked unless a duty-roster feed is confirmed accessible ΓÇö do not fabricate this data source.
+
+Source: Synapse Master Feature-Innovation Brief (SIH26028). This PRD reorganizes and operationalizes that brief into requirements, architecture, and roadmap form for build execution.

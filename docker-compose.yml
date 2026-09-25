@@ -1,0 +1,41 @@
+# =============================================
+# Synapse — Docker Compose
+# SIH26028 - Dynamic Railway ETA Intelligence
+# =============================================
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATA_RAW_DIR=/app/data/raw
+      - DATA_PROCESSED_DIR=/app/data/processed
+      - MODELS_DIR=/app/data/models
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ENABLE_NETWORK_GRAPH=true
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/health'); assert r.status_code == 200"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        BACKEND_API_URL: http://backend:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - BACKEND_API_URL=http://backend:8000

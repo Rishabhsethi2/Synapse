@@ -1,0 +1,101 @@
+﻿Goal | Metric | Target / Baseline
+ETA accuracy ΓëÑ baseline | MAE/RMSE per station | Beat ΓÇ£schedule + current delayΓÇ¥ naive model
+Trustworthy uncertainty | Interval coverage (actual falls in stated interval X% of time) | Coverage close to stated confidence; beats fixed ┬▒5 min band
+Explainability | Human/judge-rated attribution plausibility | Attribution doesnΓÇÖt contradict obvious cause
+Forecast stability signal works | Correlation of Stability Index with real re-forecast frequency | Index tracks real volatility
+Graceful degradation | Correct fallback-trigger rate on injected data gaps | No silent failures ΓÇö always a visible flag
+---TABLE END---
+Persona | Need | Primary Surface
+Passenger | ΓÇ£When do I need to be at the station?ΓÇ¥ | App ΓÇö Level 1ΓÇô3 disclosure
+Station Staff | Platform + dwell + conflicts, no login/filtering | Station display
+Control Room | Where can things go wrong next; drill into any train | Control-room dashboard (default view = Vulnerability Index, not a ticker wall)
+Crew / Operations | Pre-departure risk, live conflict alerts when relevant | Crew interface (roster-gated)
+Feeder Transport (cabs/buses) | A time window to stage vehicles, not a point ETA | API only ΓÇö no dashboard
+---TABLE END---
+ID | Requirement | Owning Component | Pri | Data | Availability
+R1 | Dynamic ETA at upcoming stations | ETA Forecasting Engine | P0 | Live position, schedule | Mandatory
+R2 | Real-time adaptation to events/delays | Dynamic Update Engine | P0 | Event stream, position | Mandatory
+R3 | Live GPS/location ingestion | Train State Engine | P0 | GPS/RTIS feed | Mandatory
+R4 | Signal aspects | Operational-Event Engine | P1 | Signalling feed | Where available
+R5 | Sectional running times | Sectional Travel-Time Engine | P0 | Historical + scheduled times | Mandatory
+R6 | Weather conditions | Weather/External Engine | P1 | Public weather API | Mandatory
+R7 | Historical delay patterns | Historical Behaviour Engine | P0 | Past running data | Mandatory
+R8 | Downstream congestion | Congestion Engine | P0 | Section occupancy | Mandatory
+R9 | Preceding-train effects | Network State Engine | P0 | Multi-train position feed | Mandatory
+R10 | Speed restrictions | Operational-Event Engine | P1 | TSR notices | Where available
+R11 | Unscheduled stoppages | Operational-Event Engine | P0 | Live event log | Mandatory
+R12 | Maintenance blocks | Operational-Event Engine | P1 | Block notices | Where available
+R13 | Level-crossing effects | Operational-Event Engine | P2 | LC gate data | Rarely available ΓÇö degrade gracefully
+R14 | Temporal + spatial variability | Sectional + Historical Engines | P0 | Time/season, section history | Mandatory
+R15 | Diverse operational zones | Config layer per zone/division | P1 | Zone metadata | Mandatory
+R16 | Thousands of trains simultaneously | Multi-Train Orchestration | P0 | Architectural | ΓÇö
+R17 | Continuous model refinement | Feedback/Retraining loop | P0 | Actual vs predicted | Mandatory
+R18 | ML/statistical forecasting | ETA Forecasting Engine | P0 | All of the above | Mandatory
+R19 | Passenger communication | Passenger API/App | P0 | ETA + confidence | Mandatory
+R20 | Station planning / platform allocation | Station Ops Interface | P0 | ETA + dwell + platform state | Mandatory
+R21 | Crew scheduling support | Crew Interface | P1 | ETA + duty roster | Data-blocked unless roster feed exists
+R22 | Cleaning operations support | Station Ops Interface | P2 | ETA + turnaround time | Mandatory
+R23 | Feeder transport support | External API | P1 | ETA + confidence band | Mandatory
+R24 | Integration APIs | API Layer | P0 | Architectural | ΓÇö
+---TABLE END---
+Differentiator | Why it matters
+Delay Attribution Trace | Converts Synapse from a number-generator into an explainer: ΓÇ£not just late ΓÇö late because of this.ΓÇ¥ Demonstrable in 30 seconds.
+Uncertainty as a first-class output (real methodology, not cosmetic %) | No competitor publicly shows a calibrated interval, only points or accuracy %. Most likely feature to survive technical judging questions.
+Train-Interaction Graph + Downstream Propagation | Requires modelling the network as trains-affecting-trains ΓÇö not something a team casually arrives at from the SIH text alone.
+Feeder-Transport Sync Window | Directly answers the often-ignored ΓÇ£feeder transportΓÇ¥ requirement with a genuinely different output ΓÇö a window, not a point.
+Graceful degradation, shown, not hidden | Judges will ask ΓÇ£what happens when data is missing.ΓÇ¥ Synapse has a designed, visible answer.
+---TABLE END---
+# | Feature | Problem Solved | Mechanism | Primary User | Novelty
+D1 | Delay Attribution Trace | ΓÇ£Why is my train late?ΓÇ¥ unanswered | Decompose predicted delay into weighted contributions (congestion / preceding-train / weather / recovery-margin-used) from the same forecast features | All | D ΓÇö differentiated integration
+D2 | Forecast Stability Index | CanΓÇÖt tell a firm ETA from a shaky one | Variance of last N re-forecasts ΓåÆ ΓÇ£stableΓÇ¥/ΓÇ£still settlingΓÇ¥ | Passenger, Staff | E ΓÇö potentially novel
+D3 | First-Detection Timestamp | Delay-likelihood onset never logged | Timestamp when model first crossed delay threshold for this journey | Control room | E
+D4 | Section Risk Heatmap | ETA is one number; no route-risk view | Rank remaining sections by expected marginal delay + uncertainty growth | Control room, Staff | D
+D5 | Recovery Zone Identification | Systems report lost time, never regained time | Flag sections where this train class historically runs ahead (slack) | Control room | E
+D6 | Train-Interaction Graph | ΓÇ£CongestionΓÇ¥ is vague | Graph of trains sharing near-term capacity ΓåÆ identify the single most-constraining neighbour | Control room | D
+D7 | Downstream Impact Propagation | No visibility into knock-on effects | Forward-project revised ETA through network graph to flag affected trains/platforms | Control room, Station | D
+D8 | Counterfactual What-If Panel | No way to test an intervention before acting | Deterministic re-run with one input perturbed, explicitly labelled a simulation | Control room | C/D
+D9 | Platform/Cleaning/Crew Conflict Forecaster | Clashes discovered late, not forecast | Cross ETA+dwell against platform/turnaround rules | Station staff | D
+D10 | Feeder-Transport Sync Window | Feeder ops burned by point-ETA error | Push a time window sized to current uncertainty, tightening on approach | Feeder ops | D
+D11 | ΓÇ£Should I leave now?ΓÇ¥ Nudge | Passengers do the mental math themselves | Binary recommendation from ETA ΓêÆ uncertainty ΓêÆ userΓÇÖs stated travel time; degrades to plain ETA if travel time not given | Passenger | D
+D12 | Model Health / Data-Freshness Panel | Confidence % with no methodology isnΓÇÖt trustworthy | Show per-train staleness, live vs.┬ástale-fallback inputs, recent calibration accuracy | Control room | E
+D13 | Anomaly-Aware Fallback Mode | Silent failure on data gaps | Explicit degraded-mode flag ΓåÆ schedule+historical-only forecast, widened intervals | All | C
+D14 | Pre-Departure Journey Risk Score | All systems activate only once train moves | Historical-only risk profile (train number, day-of-week/season) before departure | Crew, Feeder | D
+D15 | Cascading-Risk Ranking (network-wide) | Control rooms react; rarely see which fine section is fragile | Network graph + historical propagation strength ΓåÆ rank sections by expected cascading impact | Control room | E/F
+---TABLE END---
+Feature | Combines | What it does
+Forecast Provenance Ledger (E1) | D1 + D3 | Every ETA revision carries a lineage record (what changed, when, by how much) ΓÇö passenger trust + post-hoc model debugging
+Network Vulnerability Index (E2) | D6 + D7 + D15 | Ranks sections by cascading damage potential right now, on healthy sections ΓÇö a proactive, not reactive, risk signal
+Recovery Opportunity Detector (E3) | D5 + D8 | Proactively surfaces ΓÇ£this train could recover N minutes in Section X if given priorityΓÇ¥ ΓÇö turns what-if from passive query into a suggestion feed
+Cross-Fleet Calibration Loop (E4) | D12 + Feedback loop | Aggregates prediction error across all trains at a section/time-band to detect systematic bias and auto-tighten/widen intervals network-wide
+---TABLE END---
+Feature area | Source | Frequency | Fallback
+Position | GPS/location feed | SecondsΓÇôminutes | Last-known + schedule extrapolation, flagged stale
+Sectional times | Historical running logs | Static, retrained periodically | Timetabled time
+Weather | Public weather API | Hourly | Ignored; interval widened
+Signal/TSR/block/LC | Operational notices | Event-driven | Feature omitted, never fabricated
+Congestion/network | Other trainsΓÇÖ position feed | Same as position | Degrade to schedule-based headway assumption
+Feedback | Actual arrival logs | Per completed journey | ΓÇö
+---TABLE END---
+Endpoint | Purpose
+GET /trains/{id}/eta | Current ETA + interval per upcoming station
+GET /trains/{id}/attribution | Delay attribution trace
+GET /trains/{id}/stability | Stability index + provenance ledger
+GET /sections/{id}/risk | Section risk heatmap entry
+GET /network/vulnerability | Control-room vulnerability ranking
+POST /whatif | Counterfactual simulation (control room only)
+GET /feeder/{trainId}/sync-window | Feeder-facing time window
+GET /health | Data freshness/model health, per train or fleet-wide
+---TABLE END---
+Capability | Metric | Baseline | Failure condition
+ETA accuracy | MAE/RMSE per station | ΓÇ£Schedule + current delayΓÇ¥ naive model | Worse than naive baseline
+Uncertainty | Interval coverage vs.┬ástated confidence | Fixed ┬▒5 min band | Coverage far from stated confidence
+Attribution | Human-rated plausibility (judge/ops review) | ΓÇö | Contradicts obvious cause
+Stability index | Correlation with real re-forecast frequency | ΓÇö | DoesnΓÇÖt track real volatility
+Fallback mode | Correct trigger rate on injected data gaps | ΓÇö | Silent failure (no flag shown)
+---TABLE END---
+Priority | Scope
+P0 | Full baseline system + Uncertainty Engine (real methodology) + Delay Attribution Trace + graceful degradation (D13)
+P1 | Section Risk Heatmap, Recovery Zones, Train-Interaction Graph, Downstream Impact Propagation, Feeder Sync Window
+P2 | Counterfactual What-If Panel, Conflict Forecaster, Model Health Panel, Pre-Departure Risk Score
+P3 | Forecast Provenance Ledger, Network Vulnerability Index, Recovery Opportunity Detector, Cross-Fleet Calibration Loop
+---TABLE END---
